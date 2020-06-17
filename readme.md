@@ -59,7 +59,7 @@ func _ready( ):
 		funcref( self, "binop" )
 	)
 	var parser:Peg.PegTree = term
-	var result:Peg.PegResult = term.check( "1+2+3*4+5", 0 )
+	var result:Peg.PegResult = term.parse( "1+2+3*4+5", 0 )
 
 	print( result.accept )
 	print( result.capture )
