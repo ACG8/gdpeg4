@@ -5,6 +5,8 @@
 ### Class
 
 ```
+const Peg: = preload( "res://addons/gd_peg/gdpeg.gd")
+
 func numbers( s:String ):
 	return { "number": int(s) }
 
@@ -16,10 +18,10 @@ func binop( root, group:Array ):
 	return { "op": group[0], "left": root, "right": group[1] }
 
 func _ready( ):
-	var numbers:Peg.PegTree = Peg.capture( Peg.regex( "[0-9]+" ), funcref( self, "numbers" ) )
-	var factor:Peg.PegTree = Peg.capture_folding(
+	var number:Peg.PegTree = Peg.capture( Peg.regex( "[0-9]+" ), funcref( self, "number" ) )
+	var term:Peg.PegTree = Peg.capture_folding(
 		Peg.concat([
-			numbers,
+			number,
 			Peg.greedy(
 				Peg.capture_group(
 					Peg.concat([
@@ -30,7 +32,7 @@ func _ready( ):
 								Peg.literal( "%" ),
 							])
 						),
-						numbers,
+						number,
 					])
 				),
 				0
@@ -38,9 +40,9 @@ func _ready( ):
 		]),
 		funcref( self, "binop" )
 	)
-	var term:Peg.PegTree = Peg.capture_folding(
+	var expr:Peg.PegTree = Peg.capture_folding(
 		Peg.concat([
-			factor,
+			term,
 			Peg.greedy(
 				Peg.capture_group(
 					Peg.concat([
@@ -50,7 +52,7 @@ func _ready( ):
 								Peg.literal( "-" ),
 							])
 						),
-						factor,
+						term,
 					])
 				),
 				0
@@ -58,8 +60,8 @@ func _ready( ):
 		]),
 		funcref( self, "binop" )
 	)
-	var parser:Peg.PegTree = term
-	var result:Peg.PegResult = term.parse( "1+2+3*4+5", 0 )
+	var parser:Peg.PegTree = expr
+	var result:Peg.PegResult = parser.parse( "1+2+3*4+5", 0 )
 
 	print( result.accept )
 	print( result.capture )
@@ -67,7 +69,16 @@ func _ready( ):
 
 ### Original PEG
 
-TODO. まだ未実装
+TODO. まだ未実装。以下のように、よくあるPEGを書いたら使えるようになるようにする予定。
+
+```
+var parser: = Peg.generate("""
+expr < term ( [+\-] term )*
+term < factor ( [*/] factor )*
+factor < number / "(" expr ")"
+number < [0-9]+
+""")
+```
 
 ## License
 
