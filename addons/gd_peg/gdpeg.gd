@@ -16,7 +16,7 @@ class PegResult:
 		self.capture_group = _capture_group
 
 class PegTree:
-	func check( buffer:String, p:int ) -> PegResult:
+	func parse( buffer:String, p:int ) -> PegResult:
 		return PegResult.new( false )
 
 class PegCapture extends PegTree:
@@ -27,8 +27,8 @@ class PegCapture extends PegTree:
 		self.a = _a
 		self.f = _f
 
-	func check( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.check( buffer, p )
+	func parse( buffer:String, p:int ) -> PegResult:
+		var ra:PegResult = a.parse( buffer, p )
 		if ra.accept:
 			var s:String = buffer.substr( p, ra.length )
 			if self.f != null:
@@ -47,8 +47,8 @@ class PegCaptureFolding extends PegTree:
 		self.a = _a
 		self.f = _f
 
-	func check( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.check( buffer, p )
+	func parse( buffer:String, p:int ) -> PegResult:
+		var ra:PegResult = a.parse( buffer, p )
 		if ra.accept:
 			for t in ra.capture_group:
 				ra.capture = f.call_func( ra.capture, t )
@@ -63,8 +63,8 @@ class PegCaptureGroup extends PegTree:
 	func _init( _a:PegTree ):
 		self.a = _a
 
-	func check( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.check( buffer, p )
+	func parse( buffer:String, p:int ) -> PegResult:
+		var ra:PegResult = a.parse( buffer, p )
 		if ra.accept:
 			ra.capture_group = ra.capture
 			ra.capture = null
@@ -80,7 +80,7 @@ class PegLiteral extends PegTree:
 		self.literal = s
 		self.literal_length = len( s )
 
-	func check( buffer:String, p:int ) -> PegResult:
+	func parse( buffer:String, p:int ) -> PegResult:
 		if buffer.substr( p, self.literal_length ) == self.literal:
 			return PegResult.new( true, self.literal_length )
 		else:
@@ -93,7 +93,7 @@ class PegRegex extends PegTree:
 		self.regex = RegEx.new( )
 		self.regex.compile( pattern )
 
-	func check( buffer:String, p:int ) -> PegResult:
+	func parse( buffer:String, p:int ) -> PegResult:
 		var result:RegExMatch = self.regex.search( buffer, p )
 
 		if result == null:
@@ -110,13 +110,13 @@ class PegConcat extends PegTree:
 	func _init( _a:Array ):
 		self.a = _a
 
-	func check( buffer:String, p:int ) -> PegResult:
+	func parse( buffer:String, p:int ) -> PegResult:
 		var total_length:int = 0
 		var total_capture = []
 		var total_capture_group:Array = []
 
 		for t in self.a:
-			var ra:PegResult = t.check( buffer, p )
+			var ra:PegResult = t.parse( buffer, p )
 			if not ra.accept:
 				return PegResult.new( false )
 			p += ra.length
@@ -147,9 +147,9 @@ class PegSelect extends PegTree:
 	func _init( _a:Array ):
 		self.a = _a
 
-	func check( buffer:String, p:int ) -> PegResult:
+	func parse( buffer:String, p:int ) -> PegResult:
 		for t in self.a:
-			var ra:PegResult = t.check( buffer, p )
+			var ra:PegResult = t.parse( buffer, p )
 			if ra.accept:
 				return ra
 
@@ -165,14 +165,14 @@ class PegGreedy extends PegTree:
 		self.least = _least
 		self.length = _length
 
-	func check( buffer:String, p:int ) -> PegResult:
+	func parse( buffer:String, p:int ) -> PegResult:
 		var total_length:int = 0
 		var total_capture = []
 		var total_capture_group:Array = []
 		var count:int = 0
 
 		while true:
-			var ra:PegResult = a.check( buffer, p )
+			var ra:PegResult = a.parse( buffer, p )
 			if not ra.accept:
 				break
 			total_length += ra.length
@@ -204,8 +204,8 @@ class PegAheadAccept extends PegTree:
 	func _init( _a:PegTree ):
 		self.a = _a
 
-	func check( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.check( buffer, p )
+	func parse( buffer:String, p:int ) -> PegResult:
+		var ra:PegResult = a.parse( buffer, p )
 		return PegResult.new( ra.accept, 0 )
 
 class PegAheadNot extends PegTree:
@@ -214,8 +214,8 @@ class PegAheadNot extends PegTree:
 	func _init( _a:PegTree ):
 		self.a = _a
 
-	func check( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.check( buffer, p )
+	func parse( buffer:String, p:int ) -> PegResult:
+		var ra:PegResult = a.parse( buffer, p )
 		return PegResult.new( not ra.accept, 0 )
 
 static func capture( _a:PegTree, _f:FuncRef = null ) -> PegTree:
