@@ -171,7 +171,7 @@ class PegConcat extends PegTree:
 		return PegResult.new( true, total_length, total_capture )
 
 class PegSelect extends PegTree:
-	var a:Array
+	var a:Array = []
 
 	func _init( _a:Array ):
 		self.a = _a
