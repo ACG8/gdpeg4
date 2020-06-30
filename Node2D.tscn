@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=2]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends Node2D
+
+const Peg: = preload(\"res://addons/gdpeg/gdpeg.gd\")
+
+func _ready( ):
+	var p = Peg.generate( \"\"\"
+		expr < term ( ~\\\"[+\\\\-]\\\" term )*
+		term < factor ( ~\\\"[*/]\\\" factor )*
+		factor < numbers / \\\"(\\\" expr \\\")\\\"
+		numbers < ~\\\"[0-9]+\\\"
+	\"\"\" )
+
+"
+
+[node name="Node2D" type="Node2D"]
+script = SubResource( 1 )

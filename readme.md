@@ -5,20 +5,17 @@
 ### Class
 
 ```
-const Peg: = preload( "res://addons/gd_peg/gdpeg.gd")
+const Peg: = preload( "res://addons/gdpeg/gdpeg.gd")
 
 func numbers( s:String ):
 	return { "number": int(s) }
 
-func binop( root, group:Array ):
+func binop( root:Array, group:Array ):
 	printt( root, group )
-	if len( group ) < 2:
-		return root
-
-	return { "op": group[0], "left": root, "right": group[1] }
+	return { "op": group[0], "left": root[0], "right": group[1] }
 
 func _ready( ):
-	var number:Peg.PegTree = Peg.capture( Peg.regex( "[0-9]+" ), funcref( self, "number" ) )
+	var number:Peg.PegTree = Peg.capture( Peg.regex( "[0-9]+" ), funcref( self, "numbers" ) )
 	var term:Peg.PegTree = Peg.capture_folding(
 		Peg.concat([
 			number,
@@ -64,7 +61,7 @@ func _ready( ):
 	var result:Peg.PegResult = parser.parse( "1+2+3*4+5", 0 )
 
 	print( result.accept )
-	print( result.capture )
+	print( result.capture[0] )
 ```
 
 ### Original PEG
@@ -76,7 +73,7 @@ var parser: = Peg.generate("""
 expr < term ( [+\-] term )*
 term < factor ( [*/] factor )*
 factor < number / "(" expr ")"
-number < [0-9]+
+number < r\"[0-9]+\"
 """)
 ```
 
