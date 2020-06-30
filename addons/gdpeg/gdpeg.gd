@@ -101,6 +101,20 @@ class PegCaptureFunction extends PegTree:
 
 		return PegResult.new( false )
 
+class PegCaptureRemove extends PegTree:
+	var a:PegTree
+
+	func _init( _a:PegTree ):
+		self.a = _a
+
+	func parse( buffer:String, p:int ) -> PegResult:
+		var ra:PegResult = a.parse( buffer, p )
+		if ra.accept:
+			ra.capture = []
+			return ra
+
+		return PegResult.new( false )
+
 class PegLiteral extends PegTree:
 	var literal:String = ""
 	var literal_length:int = 0
@@ -269,7 +283,7 @@ class PegGeneratorLiteral extends PegGenerator:
 	func _init( _literal:String ):
 		self.literal = _literal
 	func compile( labels:Dictionary, capture_functions:Dictionary = {} ) -> PegTree:
-		return PegLiteral.new( self.literal )
+		return PegCapture.new( PegLiteral.new( self.literal ) )
 
 class PegGeneratorRegex extends PegGenerator:
 	var pattern:String
@@ -278,7 +292,7 @@ class PegGeneratorRegex extends PegGenerator:
 		self.pattern = _pattern
 		self.param = _param
 	func compile( labels:Dictionary, capture_functions:Dictionary = {} ) -> PegTree:
-		return PegRegex.new( self.pattern, self.param )
+		return PegCapture.new( PegRegex.new( self.pattern, self.param ) )
 
 class PegGeneratorSuffix extends PegGenerator:
 	var child:PegGenerator
@@ -354,11 +368,14 @@ class PegGeneratorDefine extends PegGenerator:
 				if capture_functions.has( self.name ):
 					tree = PegCaptureFunction.new( tree, capture_functions[self.name] )
 				else:
-					# オリジナルcaptureコードを入れる？
-					#tree = PegCaptureFunction.new( tree, capture_functions[self.name] )
 					pass
 			"<~":
-				pass
+				if capture_functions.has( self.name ):
+					tree = PegCapture.new( tree, capture_functions[self.name] )
+				else:
+					pass
+			"<-":
+				tree = PegCaptureRemove.new( tree )
 
 		return tree
 
@@ -411,12 +428,12 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 			PegSelect.new([
 				PegConcat.new([
 					PegLiteral.new( "\"" )
-				,	PegCapture.new( PegRegex.new( "(\\.|[^\"\\])*" ) )
+				,	PegCapture.new( PegRegex.new( "(\\\\.|[^\"\\\\])*" ) )
 				,	PegLiteral.new( "\"" )
 				])
 			,	PegConcat.new([
 					PegLiteral.new( "\'" )
-				,	PegCapture.new( PegRegex.new( "(\\.|[^'\\])*" ) )
+				,	PegCapture.new( PegRegex.new( "(\\\\.|[^'\\\\])*" ) )
 				,	PegLiteral.new( "\'" )
 				])
 			])
@@ -458,9 +475,10 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 	var p_arrow: = PegConcat.new([
 		PegCapture.new( 
 			PegSelect.new([
-				PegLiteral.new( "<" )
-			,	PegLiteral.new( "=" )
+				PegLiteral.new( "=" )
 			,	PegLiteral.new( "<~" )
+			,	PegLiteral.new( "<-" )
+			,	PegLiteral.new( "<" )
 			])
 		)
 	,	p_space
@@ -555,16 +573,18 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 	if not result.accept:
 		return null
 
-	print( src.substr( 92))
-	return null
-
 	# すべての定義を出す
-	var labels:Dictionary
+	var labels:Dictionary = {}
 	for def in result.capture:
 		labels[def.name] = PegSelect.new([ null ])
 
 	# コンパイル
 	for def in result.capture:
 		labels[def.name].a[0] = def.compile( labels, capture_functions )
+	var root_node:PegTree = labels[result.capture[0].name]
 
-	return labels[result.capture[0].name]
+	# 後始末
+	for name in labels.keys( ):
+		labels.erase( name )
+
+	return root_node
