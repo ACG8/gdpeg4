@@ -1,8 +1,12 @@
 # "GDPeg" Parsing Expression Grammar for GDScript
 
+## Help
+
+[Document](https://bitbucket.org/arlez80/gdpeg/wiki/Home)
+
 ## How to Use
 
-### Original PEG
+### Text Notation
 
 ```
 const Peg: = preload( "res://addons/gdpeg/gdpeg.gd")
@@ -45,7 +49,7 @@ func _ready( ):
 	print( show_tree( result.capture[0] ) )
 ```
 
-### Class
+### Instance Notation
 
 結構柔軟に書ける。
 
