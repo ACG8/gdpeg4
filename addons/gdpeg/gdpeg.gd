@@ -281,7 +281,7 @@ class PegGeneratorName extends PegGenerator:
 class PegGeneratorLiteral extends PegGenerator:
 	var literal:String
 	func _init( _literal:String ):
-		self.literal = _literal
+		self.literal = _literal.replace( "\\r", "\r" ).replace( "\\n", "\n" ).replace( "\\t", "\t" ).replace( "\\\"", "\"" ).replace( "\\\'", "\'" ).replace( "\\\\", "\\" )
 	func compile( labels:Dictionary, capture_functions:Dictionary = {} ) -> PegTree:
 		return PegCapture.new( PegLiteral.new( self.literal ) )
 
@@ -289,7 +289,7 @@ class PegGeneratorRegex extends PegGenerator:
 	var pattern:String
 	var param:String
 	func _init( _pattern:String, _param:String ):
-		self.pattern = _pattern
+		self.pattern = _pattern.replace( "\\r", "\r" ).replace( "\\n", "\n" ).replace( "\\t", "\t" ).replace( "\\\"", "\"" ).replace( "\\\'", "\'" ).replace( "\\\\", "\\" )
 		self.param = _param
 	func compile( labels:Dictionary, capture_functions:Dictionary = {} ) -> PegTree:
 		return PegCapture.new( PegRegex.new( self.pattern, self.param ) )
@@ -382,12 +382,12 @@ class PegGeneratorDefine extends PegGenerator:
 class PegGeneratorFuncs:
 	func name( _name:String ):
 		return PegGeneratorName.new( _name )
-	func literal( _literal:String ):
-		return PegGeneratorLiteral.new( _literal )
+	func literal( _literal:Array ):
+		return PegGeneratorLiteral.new( _literal[0] )
 	func regex( group:Array ):
 		return PegGeneratorRegex.new( group[0], group[1] )
-	func reg_range( _pattern:String ):
-		return PegGeneratorRegex.new( "[" + _pattern + "]", "" )
+	func reg_range( _pattern:Array ):
+		return PegGeneratorRegex.new( "[" + _pattern[0] + "]", "" )
 	func any( _param:String ):
 		return PegGeneratorRegex.new( ".", "" )
 	func suffix( group:Array ):
@@ -423,7 +423,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 		PegCapture.new( PegRegex.new( "[A-Za-z_][A-Za-z0-9_]+" ), funcref( gen, "name" ) )
 	,	p_space
 	])
-	var p_literal: = PegCapture.new(
+	var p_literal: = PegCaptureFunction.new(
 		PegConcat.new([
 			PegSelect.new([
 				PegConcat.new([
@@ -461,7 +461,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 		])
 	,	funcref( gen, "regex" )
 	)
-	var p_range: = PegCapture.new(
+	var p_range: = PegCaptureFunction.new(
 		PegConcat.new([
 			PegLiteral.new( "[" )
 		,	PegCapture.new( PegRegex.new( "(\\\\.|[^\\]\\\\])*" ) )
