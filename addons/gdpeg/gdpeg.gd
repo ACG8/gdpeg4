@@ -64,7 +64,7 @@ class PegCaptureFolding extends PegTree:
 			if 0 < len( ra.capture ):
 				var result:Array = [ra.capture[0]]
 				for i in range( 1, len( ra.capture ) ):
-					result = [f.call_func( result, ra.capture[i] )]
+					result = [self.f.call_func( result, ra.capture[i] )]
 				ra.capture = result
 			return ra
 
@@ -224,18 +224,16 @@ class PegAheadAccept extends PegTree:
 		self.a = _a
 
 	func parse( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.parse( buffer, p )
-		return PegResult.new( ra.accept, 0 )
+		return PegResult.new( self.a.parse( buffer, p ).accept, 0 )
 
-class PegAheadNot extends PegTree:
+class PegAheadNotAccept extends PegTree:
 	var a:PegTree
 
 	func _init( _a:PegTree ):
 		self.a = _a
 
 	func parse( buffer:String, p:int ) -> PegResult:
-		var ra:PegResult = a.parse( buffer, p )
-		return PegResult.new( not ra.accept, 0 )
+		return PegResult.new( not self.a.parse( buffer, p ).accept, 0 )
 
 static func capture( _a:PegTree, _f:FuncRef = null ) -> PegTree:
 	return PegCapture.new( _a, _f )
@@ -265,7 +263,7 @@ static func ahead_accept( _a:PegTree ) -> PegTree:
 	return PegAheadAccept.new( _a )
 
 static func ahead_not( _a:PegTree ) -> PegTree:
-	return PegAheadNot.new( _a )
+	return PegAheadNotAccept.new( _a )
 
 class PegGenerator:
 	func compile( labels:Dictionary, capture_functions:Dictionary = {} ) -> PegTree:
@@ -323,7 +321,7 @@ class PegGeneratorPrefix extends PegGenerator:
 			"&":
 				return PegAheadAccept.new( p )
 			"!":
-				return PegAheadNot.new( p )
+				return PegAheadNotAccept.new( p )
 		return null
 
 class PegGeneratorConcat extends PegGenerator:
@@ -498,7 +496,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 	])
 	# Syntaxes
 	var p_primary: = PegSelect.new([
-		PegConcat.new([ p_name, PegAheadNot.new( p_arrow ) ])
+		PegConcat.new([ p_name, PegAheadNotAccept.new( p_arrow ) ])
 	,	p_factor
 	,	p_literal
 	,	p_regex
@@ -536,7 +534,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 	var p_concat: = PegCaptureFunction.new(
 		PegGreedy.new(
 			PegConcat.new([
-				PegAheadNot.new( p_select )
+				PegAheadNotAccept.new( p_select )
 			,	p_prefix
 			]),
 			1
