@@ -3,7 +3,7 @@
 		by あるる / きのもと 結衣 @arlez80
 """
 
-tool
+@tool
 extends EditorPlugin
 
 func _enter_tree():
