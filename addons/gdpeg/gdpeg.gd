@@ -32,9 +32,9 @@ class PegDebug:
 
 class PegCapture extends PegTree:
 	var a:PegTree
-	var f:FuncRef
+	var f:Callable
 
-	func _init( _a:PegTree, _f:FuncRef = null ):
+	func _init( _a:PegTree, _f:Callable = func (x):x ):
 		self.a = _a
 		self.f = _f
 
@@ -42,19 +42,16 @@ class PegCapture extends PegTree:
 		var ra:PegResult = a.parse( buffer, p )
 		if ra.accept:
 			var s:String = buffer.substr( p, ra.length )
-			if self.f != null:
-				ra.capture = [self.f.call_func( s )]
-			else:
-				ra.capture = [s]
+			ra.capture = [self.f.call( s )]
 			return ra
 
 		return PegResult.new( false )
 
 class PegCaptureFolding extends PegTree:
 	var a:PegTree
-	var f:FuncRef
+	var f:Callable
 
-	func _init( _a:PegTree, _f:FuncRef ):
+	func _init( _a:PegTree, _f:Callable ):
 		self.a = _a
 		self.f = _f
 
@@ -64,7 +61,7 @@ class PegCaptureFolding extends PegTree:
 			if 0 < len( ra.capture ):
 				var result:Array = [ra.capture[0]]
 				for i in range( 1, len( ra.capture ) ):
-					result = [self.f.call_func( result, ra.capture[i] )]
+					result = [self.f.call( result, ra.capture[i] )]
 				ra.capture = result
 			return ra
 
@@ -86,17 +83,18 @@ class PegCaptureGroup extends PegTree:
 
 class PegCaptureFunction extends PegTree:
 	var a:PegTree
-	var f:FuncRef
+	var f:Callable
 
-	func _init( _a:PegTree, _f:FuncRef = null ):
+	func _init( _a:PegTree, _f = null ):
 		self.a = _a
 		self.f = _f
 
 	func parse( buffer:String, p:int ) -> PegResult:
 		var ra:PegResult = a.parse( buffer, p )
 		if ra.accept:
+			
 			if self.f != null:
-				ra.capture = [f.call_func( ra.capture )]
+				ra.capture = [f.call( ra.capture )]
 			return ra
 
 		return PegResult.new( false )
@@ -235,10 +233,10 @@ class PegAheadNotAccept extends PegTree:
 	func parse( buffer:String, p:int ) -> PegResult:
 		return PegResult.new( not self.a.parse( buffer, p ).accept, 0 )
 
-static func capture( _a:PegTree, _f:FuncRef = null ) -> PegTree:
+static func capture( _a:PegTree, _f:Callable = func (x):x ) -> PegTree:
 	return PegCapture.new( _a, _f )
 
-static func capture_folding( _a:PegTree, _f:FuncRef = null ) -> PegTree:
+static func capture_folding( _a:PegTree, _f:Callable = func (x):x ) -> PegTree:
 	return PegCaptureFolding.new( _a, _f )
 
 static func capture_group( _a:PegTree ) -> PegTree:
@@ -418,7 +416,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 	]))
 	# Terminators
 	var p_name: = PegConcat.new([
-		PegCapture.new( PegRegex.new( "[A-Za-z_][A-Za-z0-9_]+" ), funcref( gen, "name" ) )
+		PegCapture.new( PegRegex.new( "[A-Za-z_][A-Za-z0-9_]+" ), gen.name )
 	,	p_space
 	])
 	var p_literal: = PegCaptureFunction.new(
@@ -437,7 +435,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 			])
 		,	p_space
 		])
-	,	funcref( gen, "literal" )
+	,	gen.literal
 	)
 	var p_regex: = PegCaptureFunction.new(
 		PegConcat.new([
@@ -457,7 +455,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 		,	PegCapture.new( PegRegex.new( "[A-Za-z]*" ) )
 		,	p_space
 		])
-	,	funcref( gen, "regex" )
+	,	gen.regex
 	)
 	var p_range: = PegCaptureFunction.new(
 		PegConcat.new([
@@ -466,9 +464,9 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 		,	PegLiteral.new( "]" )
 		,	p_space
 		])
-	,	funcref( gen, "reg_range" )
+	,	gen.reg_range
 	)
-	var p_any: = PegCapture.new( PegConcat.new([ PegLiteral.new( "." ), p_space ]), funcref( gen, "any" ) )
+	var p_any: = PegCapture.new( PegConcat.new([ PegLiteral.new( "." ), p_space ]), gen.any)
 	# Operators
 	var p_arrow: = PegConcat.new([
 		PegCapture.new( 
@@ -516,7 +514,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 			)
 		,	p_space
 		])
-	,	funcref( gen, "suffix" )
+	,	gen.suffix
 	)
 	var p_prefix: = PegCaptureFunction.new(
 		PegConcat.new([
@@ -529,7 +527,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 			),
 			p_suffix
 		])
-	,	funcref( gen, "prefix" )
+	,	gen.prefix
 	)
 	var p_concat: = PegCaptureFunction.new(
 		PegGreedy.new(
@@ -539,7 +537,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 			]),
 			1
 		)
-	,	funcref( gen, "concat" )
+	,	gen.concat
 	)
 	p_expr.a[0] = PegCaptureFunction.new(
 		PegConcat.new([
@@ -551,7 +549,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 				])
 			)
 		])
-	,	funcref( gen, "select" )
+	,	gen.select
 	)
 	var p_define: = PegCaptureFunction.new(
 		PegConcat.new([
@@ -560,7 +558,7 @@ static func generate( src:String, capture_functions:Dictionary = {} ) -> PegTree
 		,	p_expr
 		,	p_space
 		])
-	,	funcref( gen, "define" )
+	,	gen.define
 	)
 	var root: = PegConcat.new([
 		p_space
